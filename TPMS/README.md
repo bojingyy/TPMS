@@ -118,15 +118,32 @@ called out in the relevant module's docstring too.
    all 6 faces combinatorially even though the rendered curve looks simple).
 
 2. **Hermite-spline node derivatives are scalars along a fixed, convention-
-   chosen direction** (perpendicular to the cube edge, tangent to the face,
-   pointing into the face interior), not free 2D vectors. The paper's own
-   parameter count (Fig. 9/A.22: "twelve derivative parameters" for six
-   nodes = 2 scalars/node) implies the same reduction, but the paper doesn't
-   spell out the direction convention we chose. Table A.1's raw derivative
-   magnitudes ([1,2] on a 2-unit cube) overshoot badly with our exact
-   Hermite formula (Eq. 2) on a 1-unit 1/8-cube domain -- we use empirically
-   re-tuned defaults (~0.2-0.6) that keep curves inside the cube; see the
-   `default_params`/`random_params` docstrings in `tpms/boundary.py`.
+   chosen direction** (perpendicular to the cube edge, tangent to the face
+   carrying the arc), not free 2D vectors. The paper's own parameter count
+   (Fig. 9/A.22: "twelve derivative parameters" for six nodes = 2
+   scalars/node) implies the same reduction, and the paper constrains the
+   directions only as "constrained to stay on the cube faces" (Sec. 2.2), so
+   the perpendicular-to-edge choice is ours.
+
+   **Corrected 2026-08-20.** This previously read that Table A.1's derivative
+   magnitudes "overshoot badly" and used empirically re-tuned defaults of
+   ~0.2-0.6. That was wrong, and it was masking a sign error: Eq. 2's `d1 =
+   P'(0)` and `d2 = P'(1)` are both tangents *in the direction of travel*,
+   but `build_boundary_curves` had `d2` pointing into the face interior (the
+   direction the curve came *from*). That put an S-hook at every arrival node
+   and flattened each arc toward its chord, which is what made large
+   magnitudes look like overshoot. With the sign fixed, an arc between two
+   mid-edge nodes sharing a cube corner is an *exact* quarter circle at
+   d = 4(sqrt(2)-1)r ~= 0.828 (`boundary.D_CIRCULAR`, verified numerically to
+   0.000 max radial deviation), and Table A.1's own ranges work directly:
+   position [-0.45, 0.45] mm and derivative [1.0, 2.0] mm on the paper's
+   2 mm 1/8-cube scale to `S_RANGE = (-0.225, 0.225)` and `D_RANGE =
+   (0.5, 1.0)` on our unit cube. The resulting arcs reproduce the strongly
+   bulging fillets of Fig. 6; the sharp cusps where two arcs meet at a node
+   are present in the paper's Fig. 6 too (clearest at the bottom-centre node
+   of Fig. 6(c)) and are not self-intersections -- no arc backtracks against
+   its own chord. Note this bug fed `tpms/train_minimal.py`, so any neural
+   surface trained before this date used the flattened boundary.
 
 3. **C1 continuity constraints (Eq. 4/5) are applied per-axis based on that
    axis's own symmetry label**, not to a face independently chosen from the
